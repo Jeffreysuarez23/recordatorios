@@ -217,19 +217,27 @@ const setFilter = (filterName) => {
 }
 
 // --- Carga de datos de la API ---
+const loadCalendarData = async () => {
+  try {
+    const calRes = await api.get(`/reminders/calendario/${currentYear.value}/${currentMonth.value}`)
+    calendarData.value = calRes.data.data
+  } catch (error) {
+    if (error.response?.status === 401) handleLogout()
+    console.error('Error cargando calendario:', error)
+  }
+}
+
 const loadInitialData = async () => {
   if (!isAuthenticated.value) return
   try {
-    // 1. Cargar Categorías
-    const catRes = await api.get('/categories')
+    const [catRes, calRes, proxRes] = await Promise.all([
+      api.get('/categories'),
+      api.get(`/reminders/calendario/${currentYear.value}/${currentMonth.value}`),
+      api.get('/reminders/proximos')
+    ])
+
     categories.value = catRes.data.data
-
-    // 2. Cargar Calendario (mes actual)
-    const calRes = await api.get(`/reminders/calendario/${currentYear.value}/${currentMonth.value}`)
     calendarData.value = calRes.data.data
-
-    // 3. Cargar Próximos (sidebar)
-    const proxRes = await api.get('/reminders/proximos')
     upcomingReminders.value = proxRes.data.data
 
   } catch (error) {
@@ -248,7 +256,7 @@ const prevMonth = async () => {
   } else {
     currentMonth.value--
   }
-  await loadInitialData()
+  await loadCalendarData()
 }
 const nextMonth = async () => {
   if (currentMonth.value === 12) {
@@ -257,13 +265,13 @@ const nextMonth = async () => {
   } else {
     currentMonth.value++
   }
-  await loadInitialData()
+  await loadCalendarData()
 }
 const goToday = async () => {
   const d = new Date()
   currentYear.value = d.getFullYear()
   currentMonth.value = d.getMonth() + 1
-  await loadInitialData()
+  await loadCalendarData()
 }
 
 
