@@ -230,20 +230,22 @@ const loadCalendarData = async () => {
 const loadInitialData = async () => {
   if (!isAuthenticated.value) return
   try {
-    const [catRes, calRes, proxRes] = await Promise.all([
+    const [catRes, calRes, proxRes] = await Promise.allSettled([
       api.get('/categories'),
       api.get(`/reminders/calendario/${currentYear.value}/${currentMonth.value}`),
       api.get('/reminders/proximos')
     ])
 
-    categories.value = catRes.data.data
-    calendarData.value = calRes.data.data
-    upcomingReminders.value = proxRes.data.data
+    if (catRes.status === 'fulfilled') categories.value = catRes.value.data.data
+    if (calRes.status === 'fulfilled') calendarData.value = calRes.value.data.data
+    if (proxRes.status === 'fulfilled') upcomingReminders.value = proxRes.value.data.data
 
-  } catch (error) {
-    if (error.response?.status === 401) {
-       handleLogout()
+    // Si alguna falló por 401, cerrar sesión
+    const results = [catRes, calRes, proxRes]
+    if (results.some(r => r.status === 'rejected' && r.reason?.response?.status === 401)) {
+      handleLogout()
     }
+  } catch (error) {
     console.error('Error cargando datos:', error)
   }
 }
